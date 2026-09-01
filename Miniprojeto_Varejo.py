@@ -47,3 +47,36 @@ def converter_data(data_str):
 
 df['Data_Compra'] = df['Data_Compra'].apply(converter_data)
 
+
+# ==========================================
+# SPRINT 4: ESTATÍSTICA DESCRITIVA (Critério 7)
+# ==========================================
+print("\n--- Estatísticas Descritivas: Número de Filhos ---")
+# Certifique-se de converter a coluna para numérico primeiro
+df['Numero_Filhos'] = pd.to_numeric(df['Numero_Filhos'], errors='coerce')
+
+estatisticas_filhos = {
+    'Média': df['Numero_Filhos'].mean(),
+    'Mediana': df['Numero_Filhos'].median(),
+    'Desvio Padrão': df['Numero_Filhos'].std(),
+    'Moda': df['Numero_Filhos'].mode()[0],
+    'Máximo': df['Numero_Filhos'].max(),
+    'Mínimo': df['Numero_Filhos'].min(),
+    'Contagem': df['Numero_Filhos'].count(),
+    'Quartis': df['Numero_Filhos'].quantile([0.25, 0.5, 0.75]).to_dict()
+}
+
+for chave, valor in estatisticas_filhos.items():
+    print(f"{chave}: {valor}")
+
+# ==========================================
+# SPRINT 4: PADRÕES DE AGRUPAMENTO (Critério 6)
+# ==========================================
+print("\n--- Padrões de Agrupamento ---")
+# Combinação 1: Vendas por Gênero
+agrupamento_genero = df.groupby('Genero')['Valor_Compra'].sum()
+print("Total de Compras por Gênero:\n", agrupamento_genero)
+
+# Combinação 2: Contagem de Compras por Categoria e Gênero
+agrupamento_cat_gen = df.pivot_table(index='Categoria', columns='Genero', values='ID_Compra', aggfunc='count')
+print("\nVolume de Compras por Categoria e Gênero:\n", agrupamento_cat_gen)
