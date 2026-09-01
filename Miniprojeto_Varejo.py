@@ -3,80 +3,96 @@ import pandas as pd
 from datetime import datetime
 
 # ==========================================
-# SPRINT 1 & 3: IMPORTAÇÃO E LEITURA (Critério 3)
+# SPRINT 1 & 3: IMPORTAÇÃO E LEITURA 
 # ==========================================
 print("Iniciando a Análise Exploratória da Base Varejo...")
 
-# Lendo de forma estruturada e nativa conforme exigido na rubrica
 caminho_arquivo = 'Base Varejo.csv'
 dados_brutos = []
 
+# Critério 3: Leitura estruturada e nativa utilizando csv.DictReader com o delimitador correto
 with open(caminho_arquivo, mode='r', encoding='utf-8') as arquivo:
-    leitor_csv = csv.DictReader(arquivo)
+    leitor_csv = csv.DictReader(arquivo, delimiter=';')
     for linha in leitor_csv:
-        dados_brutos.append(linha)
+        # Limpeza inicial: ignorando colunas vazias criadas por delimitadores extras (;;;;) no CSV
+        linha_limpa = {k: v for k, v in linha.items() if k and k.strip() != ''}
+        dados_brutos.append(linha_limpa)
 
-# Convertendo para DataFrame para facilitar o restante da AED
 df = pd.DataFrame(dados_brutos)
 
 # ==========================================
-# SPRINT 2 & 3: TRATAMENTO DE NULOS E DATAS (Critérios 4 e 5)
+# SPRINT 2 & 3: TRATAMENTO DE NULOS E DATAS 
 # ==========================================
 
-# 1. Regra de Negócio: if/else para Categorias Vazias
+# 1. Regra de Negócio: if/else para Categorias Vazias (PR_CAT)
 def preencher_categoria(categoria):
-    if pd.isna(categoria) or categoria.strip() == '':
+    # Tratando nulos, espaços em branco e a marcação de erro '#N/D' encontrada na base real
+    if pd.isna(categoria) or str(categoria).strip() == '' or categoria == '#N/D':
         return "Sem Categoria"
     else:
         return categoria
 
-df['Categoria'] = df['Categoria'].apply(preencher_categoria)
+df['PR_CAT'] = df['PR_CAT'].apply(preencher_categoria)
 
-# 2. Tratamento de dimensões físicas (Exemplo: preencher com 0 ou a média, e justificar)
-# JUSTIFICATIVA (coloque no print e no README): Optou-se por preencher valores nulos 
-# de dimensões físicas com a mediana/0 para não distorcer a análise de volume.
-# df['Dimensao'] = df['Dimensao'].fillna(0) # Adapte para a coluna real da base
+# 2. Tratamento de Nulos das "Dimensões Físicas" (Critério 4)
+# Justificativa: Ao inspecionar a base, constatou-se que não há uma dimensão física explícita.
+# No entanto, os erros de formatação geraram colunas fantasmas (Unnamed) 100% nulas.
+# O tratamento aplicado foi a exclusão dessas colunas sem dados para garantir a integridade.
+df = df.dropna(axis=1, how='all')
 
-# 3. Conversão de Data usando o módulo datetime exigido
+# 3. Conversão de Data usando o módulo datetime nativo (Critério 5)
 def converter_data(data_str):
     try:
-        # Ajuste o formato '%Y-%m-%d' conforme o padrão que vier no CSV
-        return datetime.strptime(data_str, '%Y-%m-%d').date()
-    except:
+        # Formato identificado na base: DD/MM/YYYY
+        return datetime.strptime(data_str, '%d/%m/%Y').date()
+    except Exception:
         return pd.NaT
 
-df['Data_Compra'] = df['Data_Compra'].apply(converter_data)
+df['DATA'] = df['DATA'].apply(converter_data)
 
+# 4. Validar regra do identificador de número de compra (CO_ID)
+def validar_id_compra(co_id):
+    if pd.isna(co_id) or not str(co_id).isdigit():
+        return "ID_Invalido"
+    return str(co_id)
+
+df['CO_ID'] = df['CO_ID'].apply(validar_id_compra)
+# Mantendo apenas transações com IDs válidos
+df = df[df['CO_ID'] != "ID_Invalido"]
 
 # ==========================================
-# SPRINT 4: ESTATÍSTICA DESCRITIVA (Critério 7)
+# SPRINT 4: ESTATÍSTICA DESCRITIVA
 # ==========================================
-print("\n--- Estatísticas Descritivas: Número de Filhos ---")
-# Certifique-se de converter a coluna para numérico primeiro
-df['Numero_Filhos'] = pd.to_numeric(df['Numero_Filhos'], errors='coerce')
+print("\n--- Estatísticas Descritivas: Número de Filhos (CL_FHL) ---")
+
+# Critério 7: Conversão da coluna CL_FHL para realizar os cálculos matemáticos
+df['CL_FHL'] = pd.to_numeric(df['CL_FHL'], errors='coerce')
 
 estatisticas_filhos = {
-    'Média': df['Numero_Filhos'].mean(),
-    'Mediana': df['Numero_Filhos'].median(),
-    'Desvio Padrão': df['Numero_Filhos'].std(),
-    'Moda': df['Numero_Filhos'].mode()[0],
-    'Máximo': df['Numero_Filhos'].max(),
-    'Mínimo': df['Numero_Filhos'].min(),
-    'Contagem': df['Numero_Filhos'].count(),
-    'Quartis': df['Numero_Filhos'].quantile([0.25, 0.5, 0.75]).to_dict()
+    'Média': df['CL_FHL'].mean(),
+    'Mediana': df['CL_FHL'].median(),
+    'Desvio Padrão': df['CL_FHL'].std(),
+    'Moda': df['CL_FHL'].mode()[0],
+    'Máximo': df['CL_FHL'].max(),
+    'Mínimo': df['CL_FHL'].min(),
+    'Contagem': df['CL_FHL'].count(),
+    'Quartis': df['CL_FHL'].quantile([0.25, 0.5, 0.75]).to_dict()
 }
 
 for chave, valor in estatisticas_filhos.items():
-    print(f"{chave}: {valor}")
+    # Arredondando floats para 2 casas decimais para manter o terminal limpo
+    print(f"{chave}: {round(valor, 2) if isinstance(valor, float) else valor}")
 
 # ==========================================
-# SPRINT 4: PADRÕES DE AGRUPAMENTO (Critério 6)
+# SPRINT 4: PADRÕES DE AGRUPAMENTO 
 # ==========================================
 print("\n--- Padrões de Agrupamento ---")
-# Combinação 1: Vendas por Gênero
-agrupamento_genero = df.groupby('Genero')['Valor_Compra'].sum()
-print("Total de Compras por Gênero:\n", agrupamento_genero)
 
-# Combinação 2: Contagem de Compras por Categoria e Gênero
-agrupamento_cat_gen = df.pivot_table(index='Categoria', columns='Genero', values='ID_Compra', aggfunc='count')
+# Critério 6: Padrões com pelo menos duas combinações
+# Combinação 1: Volume de itens adquiridos por Gênero (CL_GENERO)
+agrupamento_genero = df.groupby('CL_GENERO')['PR_ID'].count()
+print("Volume de Produtos por Gênero:\n", agrupamento_genero)
+
+# Combinação 2: Cruzamento de Categoria do Produto (PR_CAT) e Gênero do Cliente via pivot_table
+agrupamento_cat_gen = df.pivot_table(index='PR_CAT', columns='CL_GENERO', values='CO_ID', aggfunc='count')
 print("\nVolume de Compras por Categoria e Gênero:\n", agrupamento_cat_gen)

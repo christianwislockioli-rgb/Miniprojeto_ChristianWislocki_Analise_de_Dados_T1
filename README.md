@@ -1,1 +1,0 @@
-# Miniprojeto_ChristianWislocki_Analise_de_Dados_T1
